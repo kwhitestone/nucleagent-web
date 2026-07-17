@@ -5,9 +5,9 @@
 ## 构建
 
 ```bash
-npm install
-npm run dev           # 开发 (:3000)
-npm run build         # 生产构建
+pnpm install
+pnpm run dev           # 开发 (:3000)
+pnpm run build         # 生产构建
 ```
 
 ## 架构约束
@@ -25,6 +25,12 @@ npm run build         # 生产构建
 | auth | 6678 | 6670 | 登录/注册 |
 | core | 6688 | 6680 | 对话/Agent/技能/管理 |
 | executor | 6698 | 6690 | 会话监控 |
+
+## 部署 (:80 / Nginx)
+
+- 生产环境主壳对外暴露 :80，由 Nginx 反向代理把请求按路径前缀分发到各子应用前端
+- Nginx 路由：`/auth/* -> :6678`、`/core/* -> :6688`、`/executor/* -> :6698`，根路径 `/` 指向主壳自身
+- 开发模式 `pnpm run dev` 监听 :3000，micro-app 直连子应用端口，不走 Nginx
 
 ## 边界
 
