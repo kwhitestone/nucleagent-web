@@ -21,3 +21,4 @@ Thumbs.db
 vite.config.d.ts
 vite.config.js
 src/**/*.js
+*.tsbuildinfo
