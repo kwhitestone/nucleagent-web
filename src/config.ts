@@ -11,23 +11,21 @@ function env(key: string, fallback: string): string {
 export const SUB_APPS = {
   auth: {
     name: "auth",
-    // 走壳应用的 Vite 反向代理（同源 /__auth -> 子应用 dev server），
-    // 绕过浏览器本地代理对非标端口的拦截（502 白屏问题）。
-    url: env("VITE_AUTH_WEB_URL", "/__auth/"),
+    url: env("VITE_AUTH_WEB_URL", "http://localhost:6678/"),
     title: "账户",
     icon: "👤",
     basePath: "/auth",
   },
   core: {
     name: "core",
-    url: env("VITE_CORE_WEB_URL", "/__core/"),
+    url: env("VITE_CORE_WEB_URL", "http://localhost:6688/"),
     title: "工作台",
     icon: "✨",
     basePath: "/",
   },
   executor: {
     name: "executor",
-    url: env("VITE_EXECUTOR_WEB_URL", "/__executor/"),
+    url: env("VITE_EXECUTOR_WEB_URL", "http://localhost:6698/"),
     title: "执行器",
     icon: "⚙️",
     basePath: "/executor",
