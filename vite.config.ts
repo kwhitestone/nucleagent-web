@@ -3,12 +3,12 @@ import vue from "@vitejs/plugin-vue";
 import { resolve } from "node:path";
 
 // 主壳应用 dev 端口可配：
-//   WEB_PORT (默认 3000)
+//   WEB_PORT (默认 26600)
 // 子应用 URL 通过 VITE_*_WEB_URL 环境变量配置（见 .env.example），
-// 子应用以 iframe 方式加载（完全隔离，不共享 window/history）。
+// 子应用以 iframe 方式加载（见 views/MicroAppHost.vue），壳↔子应用用 postMessage 通信。
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const port = Number(env.WEB_PORT ?? env.PORT ?? 3000);
+  const port = Number(env.WEB_PORT ?? env.PORT ?? 26600);
 
   return {
     plugins: [vue()],

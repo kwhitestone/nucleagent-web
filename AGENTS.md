@@ -6,14 +6,14 @@
 
 ```bash
 pnpm install
-pnpm run dev           # 开发 (:3000)
+pnpm run dev           # 开发 (:26600)
 pnpm run build         # 生产构建
 ```
 
 ## 架构约束
 
 - 使用 micro-app (micro-zoe) 加载 3 个子应用
-- 子应用来源：auth (:6678) / core (:6688) / executor (:6698)
+- 子应用来源：auth (:26678) / core (:26688) / executor (:26698)
 - 主壳负责全局路由分发、认证状态、布局框架
 - 子应用独立部署，主壳通过 micro-app 标签加载
 - 认证 JWT 存在主壳，通过 micro-app data 属性传递给子应用
@@ -22,15 +22,15 @@ pnpm run build         # 生产构建
 
 | 子应用 | 前端端口 | 后端端口 | 职责 |
 |--------|---------|---------|------|
-| auth | 6678 | 6670 | 登录/注册 |
-| core | 6688 | 6680 | 对话/Agent/技能/管理 |
-| executor | 6698 | 6690 | 会话监控 |
+| auth | 26678 | 26670 | 登录/注册 |
+| core | 26688 | 26680 | 对话/Agent/技能/管理 |
+| executor | 26698 | 26690 | 会话监控 |
 
 ## 部署 (:80 / Nginx)
 
 - 生产环境主壳对外暴露 :80，由 Nginx 反向代理把请求按路径前缀分发到各子应用前端
-- Nginx 路由：`/auth/* -> :6678`、`/core/* -> :6688`、`/executor/* -> :6698`，根路径 `/` 指向主壳自身
-- 开发模式 `pnpm run dev` 监听 :3000，micro-app 直连子应用端口，不走 Nginx
+- Nginx 路由：`/auth/* -> :26678`、`/core/* -> :26688`、`/executor/* -> :26698`，根路径 `/` 指向主壳自身
+- 开发模式 `pnpm run dev` 监听 :26600，micro-app 直连子应用端口，不走 Nginx
 
 ## 边界
 

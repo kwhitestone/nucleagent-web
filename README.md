@@ -13,10 +13,10 @@ Nucleagent 微前端主壳。基于 [micro-app](https://micro-zoe.github.io/micr
 
 | 子应用 | 来源 | 前端端口 |
 |--------|------|---------|
-| core | nucleagent-core/app/src/web | 6688 |
-| auth | nucleagent-auth/app/src/web | 6678 |
-| executor | nucleagent-executor/app/src/web | 6698 |
+| core | nucleagent-core/app/src/web | 26688 |
+| auth | nucleagent-auth/app/src/web | 26678 |
+| executor | nucleagent-executor/app/src/web | 26698 |
 
 ## 端口
 
-- 主壳: 80 (生产) / 3000 (开发)
+- 主壳: 80 (生产) / 26600 (开发)

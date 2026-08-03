@@ -1,37 +1,23 @@
-/* NucleAgent Design System（壳应用 + 子应用共享）
-   对齐 design/nucleagent-design.html：teal + 靛蓝/紫极光体系 */
-:root {
-  --teal-50: #f0fdfa; --teal-100: #ccfbf1; --teal-200: #99f6e4;
-  --teal-300: #5eead4; --teal-400: #2dd4bf; --teal-500: #14b8a6;
-  --teal-600: #0d9488; --teal-700: #0f766e;
-  --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
-  --slate-300: #cbd5e1; --slate-400: #94a3b8; --slate-500: #64748b;
-  --slate-600: #475569; --slate-700: #334155; --slate-800: #1e293b; --slate-900: #0f172a;
-  --indigo-400: #818cf8; --indigo-500: #6366f1; --indigo-600: #4f46e5;
-  --violet-400: #a78bfa; --violet-500: #8b5cf6; --violet-600: #7c3aed;
+/* ============================================
+   主壳私有样式
+   ============================================
+   设计 token（调色板/渐变/阴影/字体/圆角/动画库）统一来自 aurora.css，
+   由 nucleagent-deploy/scripts/sync-design-tokens.sh 从设计稿提取生成。
+   本文件只放主壳私有的样式，不要再复制 token —— 重构前四份手抄副本已互相
+   漂移（如 core 有 --na-grad-mesh 而壳没有），这正是要消除的问题。
 
-  --na-bg: #fafaff;
-  --na-text: var(--slate-900);
-  --na-text-secondary: var(--slate-500);
-  --na-border: var(--slate-200);
+   引入顺序见 src/main.ts：先 aurora.css，后 global.css。
+   ============================================ */
 
-  --na-grad-brand: linear-gradient(135deg, #0d9488 0%, #6366f1 50%, #8b5cf6 100%);
-  --na-grad-teal-indigo: linear-gradient(135deg, #14b8a6, #6366f1);
-  --na-shadow-glow-teal: 0 0 24px rgba(20, 184, 166, 0.25);
-
-  --na-font-display: "Instrument Serif", Georgia, serif;
-  --na-font-body: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
-
-  font-family: var(--na-font-body);
-  color: var(--na-text);
-  background-color: var(--na-bg);
+/* 设计稿的 body 是 overflow:hidden 固定视口，滚动交给 .content。
+   aurora.css 已含该 reset，这里只补壳的挂载点。 */
+#app {
+  height: 100vh;
+  overflow: hidden;
 }
-* { box-sizing: border-box; }
-html, body, #app { margin: 0; padding: 0; min-height: 100vh; }
 
-/* micro-app 子应用容器撑满主区 */
+/* micro-app 子应用容器撑满内容区。
+   子应用内部不应再撑出第二个滚动条——滚动由壳的 .content 负责。 */
 micro-app {
   display: block;
   width: 100%;
