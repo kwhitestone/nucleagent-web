@@ -281,9 +281,33 @@ function openConversation(id: number): void {
   color: var(--text-secondary);
   transition: all 0.2s var(--ease);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
 .history-item:hover { background: var(--bg-hover); color: var(--text-primary); transform: translateX(2px); }
+
+/* 选中态：底色高亮 + 左侧高亮条 + 入场动效（与 nav-item.active 一致）*/
+.history-item.active {
+  background: var(--grad-brand-soft);
+  color: var(--indigo-600);
+  font-weight: 600;
+  animation: fade-in-up 0.3s var(--ease-out) both;
+}
+
+.history-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 0 2px 2px 0;
+  background: var(--grad-teal-indigo);
+  box-shadow: 0 0 8px rgba(20, 184, 166, 0.5);
+}
+
 .history-item > span:last-child { overflow: hidden; text-overflow: ellipsis; }
 
 .history-item .dot {
