@@ -10,9 +10,16 @@
    ============================================ */
 
 /* 设计稿的 body 是 overflow:hidden 固定视口，滚动交给 .content。
-   aurora.css 已含该 reset，这里只补壳的挂载点。 */
+   aurora.css 已含 * { margin:0 } reset，这里补壳的挂载点全链路撑满。
+
+   高分屏（4K+）缩放下，html/body 默认宽度是 auto（非视口宽度），
+   若不显式 width:100%，.app-shell 的 100vw 会参照错误的 containing block，
+   导致整个布局缩在左上角、右下大片空白。html/body/#app 必须全链路 100%。 */
+html,
+body,
 #app {
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 

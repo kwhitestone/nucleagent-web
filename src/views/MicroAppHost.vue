@@ -20,7 +20,7 @@
  * 消息协议（子应用 → 壳，type 前缀 'sub:'）：
  *   { source: 'sub', type: 'conversations', conversations, activeId }  对话列表
  */
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { SUB_APPS, type SubAppName } from "@/config";
 import { useShellStore } from "@/store/shell";
@@ -117,6 +117,35 @@ if (typeof window !== "undefined") {
 }
 onBeforeUnmount(() => {
   if (typeof window !== "undefined") window.removeEventListener("message", onMessage);
+  ro?.disconnect();
+});
+
+/**
+ * 显式同步 iframe 像素尺寸到父容器（.content）。
+ *
+ * 为什么不纯靠 CSS height:100%：Chrome 4K 高 DPI 下首帧 flex 布局竞态会让
+ * 父容器高度在首帧未稳定，iframe height:100% 据此锁定错误的小尺寸（页面只
+ * 占左上角，resize 才恢复）。改用 JS 读父容器 clientWidth/Height 写死 iframe
+ * 像素尺寸，绕过 % 高度的解析时序。ResizeObserver 持续响应窗口变化。
+ */
+function syncIframeSize(): void {
+  const iframe = iframeRef.value;
+  // iframe 的父级是 .content（router-view 直接渲染组件根 iframe，无包裹 div）。
+  const host = iframe?.parentElement;
+  if (!iframe || !host) return;
+  iframe.style.width = `${host.clientWidth}px`;
+  iframe.style.height = `${host.clientHeight}px`;
+}
+
+let ro: ResizeObserver | null = null;
+
+onMounted(() => {
+  syncIframeSize();
+  const host = iframeRef.value?.parentElement;
+  if (host && typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(() => syncIframeSize());
+    ro.observe(host);
+  }
 });
 </script>
 

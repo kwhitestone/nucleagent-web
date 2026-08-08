@@ -18,6 +18,15 @@ const shell = useShellStore();
 
 onMounted(() => {
   void shell.restore();
+  // Chrome 4K 高 DPI 首帧布局竞态修复：首帧 flex 计算时视口尺寸可能尚未
+  // 稳定，导致 .content > iframe height:100% 锁在错误的小尺寸（页面只占左上
+  // 角，resize 后才恢复；Edge 不复现）。双层 rAF 确保首帧合成完成、DPI 校正
+  // 落定后再触发重排，此时布局会用正确尺寸。对 Edge/标准 DPI 无副作用。
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+  });
 });
 </script>
 
@@ -35,11 +44,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 对齐设计稿第 225–232（app-shell）+ 500–613（main-area / content）行。 */
+/* 对齐设计稿第 225–232（app-shell）+ 500–613（main-area / content）行。
+   用 100% 而非 100vw/100vh：高分屏缩放下 vw/vh 参照的 containing block 可能
+   推导异常，导致布局缩在左上角。父级 #app 已是 100%×100%（见 global.css）。 */
 .app-shell {
   display: flex;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
   position: relative;
   z-index: 1;
@@ -55,7 +66,12 @@ onMounted(() => {
 
 .content {
   flex: 1;
-  overflow-y: auto;
+  /* min-height:0 是 flex 子项能被父级约束高度的关键（默认 min-height:auto
+     会让内容撑开而非收缩）。配合 overflow:hidden，让 .content 固定撑满、
+     不自身滚动——滚动交给内部 iframe（core/auth/executor 子应用）各自处理。
+     否则刷新首帧 iframe height:100% 参照高度未定 → core 塌缩，resize 才恢复。 */
+  min-height: 0;
+  overflow: hidden;
   position: relative;
 }
 </style>
