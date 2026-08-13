@@ -1,6 +1,14 @@
 {
   "compilerOptions": {
+    // composite 项目必须产出（不能用 noEmit），所以把产物全部重定向到
+    // node_modules/.tmp——否则 vue-tsc -b 会在仓库根写出 vite.config.js，
+    // 与 vite.config.ts 同名共存，埋下「改了 .ts 不生效」的坑。
+    // 与 core/auth/executor 三个前端保持一致。
     "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.tmp/tsconfig.node",
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",

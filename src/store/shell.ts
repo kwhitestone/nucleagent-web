@@ -45,6 +45,12 @@ export const useShellStore = defineStore("shell", () => {
   // --- 由 core 子应用推送 ---
   const conversations = ref<ConversationBrief[]>([]);
   const activeConversationId = ref<number | null>(null);
+  /** 还有更早的对话可加载（core 推送的 hasMore）。 */
+  const hasMore = ref(true);
+  /** 下一页加载中（侧栏显示加载态，并阻止重复触发）。 */
+  const loadingMore = ref(false);
+  /** 加载更多请求计数：自增触发 MicroAppHost watch → postMessage(loadMore) 给 core。 */
+  const loadMoreRequested = ref(0);
 
   function toggleSidebar(): void {
     sidebarCollapsed.value = !sidebarCollapsed.value;
@@ -58,10 +64,27 @@ export const useShellStore = defineStore("shell", () => {
     loginModalOpen.value = false;
   }
 
-  /** 由 micro-app 数据监听器调用——core 每次对话列表变化都会推一次。 */
-  function setConversations(list: ConversationBrief[], activeId: number | null = null): void {
+  /** 由 core 子应用推送——每次对话列表变化都会推一次，含是否还有更多。 */
+  function setConversations(
+    list: ConversationBrief[],
+    activeId: number | null = null,
+    more: boolean = true,
+  ): void {
     conversations.value = list;
     activeConversationId.value = activeId;
+    hasMore.value = more;
+    // core 推回新列表即表示本轮加载完成，清掉侧栏加载态。
+    loadingMore.value = false;
+  }
+
+  /**
+   * 侧栏滚动到底时调用：请求 core 加载下一页。
+   * 幂等守卫在此（hasMore/loadingMore），MicroAppHost 只需 watch 计数发消息。
+   */
+  function requestLoadMore(): void {
+    if (!hasMore.value || loadingMore.value) return;
+    loadingMore.value = true;
+    loadMoreRequested.value++;
   }
 
   async function login(payload: LoginPayload): Promise<void> {
@@ -98,6 +121,8 @@ export const useShellStore = defineStore("shell", () => {
     user.value = null;
     conversations.value = [];
     activeConversationId.value = null;
+    hasMore.value = true;
+    loadingMore.value = false;
   }
 
   return {
@@ -108,6 +133,9 @@ export const useShellStore = defineStore("shell", () => {
     loginModalOpen,
     conversations,
     activeConversationId,
+    hasMore,
+    loadingMore,
+    loadMoreRequested,
     // getters
     isAuthenticated,
     displayName,
@@ -117,6 +145,7 @@ export const useShellStore = defineStore("shell", () => {
     openLoginModal,
     closeLoginModal,
     setConversations,
+    requestLoadMore,
     login,
     register,
     restore,

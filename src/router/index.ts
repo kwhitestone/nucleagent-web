@@ -17,6 +17,7 @@ const routes: RouteRecordRaw[] = [
   { path: "/chat/:id", name: "conversation", component: MicroAppHost },
   { path: "/creation", name: "creation", component: MicroAppHost },
   { path: "/tasks", name: "tasks", component: MicroAppHost },
+  { path: "/providers", name: "providers", component: MicroAppHost },
   // 深层子应用
   { path: "/account/:rest(.*)?", name: "account", component: MicroAppHost },
   { path: "/executor/:rest(.*)?", name: "executor", component: MicroAppHost },
@@ -35,7 +36,7 @@ const router = createRouter({
  */
 router.beforeEach((to) => {
   const shell = useShellStore();
-  const protectedPrefixes = ["/chat", "/creation", "/tasks", "/account"];
+  const protectedPrefixes = ["/chat", "/creation", "/tasks", "/providers", "/account"];
   const needsAuth = protectedPrefixes.some((p) => to.path.startsWith(p));
   if (needsAuth && !shell.isAuthenticated) {
     shell.openLoginModal();

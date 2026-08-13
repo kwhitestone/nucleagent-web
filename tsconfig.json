@@ -4,6 +4,15 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    // 只做类型检查，绝不产出 .js。
+    //
+    // 缺了这一行会出真事故：`npm run build` 的 `vue-tsc -b` 会把每个 .ts/.vue
+    // 就地编译成同名 .js（src/config.ts → src/config.js）。Vite 解析
+    // `./router` 时 .js 优先于 .ts，于是 dev server 长期服务那些陈旧产物——
+    // 改了 .ts 却毫无效果，且没有任何报错提示。2026-08-03 就这么埋了 10 个
+    // 陈旧 .js，直到 08-10 加导航项时才被发现。
+    // 另外三个前端（core/auth/executor）的 tsconfig 都有 noEmit，只有本包漏了。
+    "noEmit": true,
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,

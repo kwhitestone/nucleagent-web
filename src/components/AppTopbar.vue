@@ -16,6 +16,7 @@ const breadcrumb = computed(() => {
   if (p.startsWith("/chat")) return "对话";
   if (p.startsWith("/creation")) return "创作";
   if (p.startsWith("/tasks")) return "任务";
+  if (p.startsWith("/providers")) return "提供商";
   if (p.startsWith("/account")) return "账户";
   if (p.startsWith("/executor")) return "执行器";
   return "首页";

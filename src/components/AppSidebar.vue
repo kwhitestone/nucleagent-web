@@ -4,10 +4,13 @@
  *
  * 结构：品牌区（渐变 logo + 轨道圆点）/ 工作区四项导航 / 最近对话 / 用户区。
  *
- * 对话历史来自 shell store，由 core 子应用通过 micro-app setData 推送；
+ * 对话历史来自 shell store，由 core 子应用通过 postMessage 推送；
  * 侧栏不自己发请求（所有权在 core，见 store/shell.ts 顶部注释）。
+ *
+ * 无限滚动：.sidebar-nav 是唯一滚动容器，滚动接近底部时 requestLoadMore()
+ * → MicroAppHost postMessage(loadMore) → core 拉下一页 → 推回新列表。
  */
-import { computed } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { NAV_ITEMS } from "@/config";
 import { useShellStore } from "@/store/shell";
@@ -15,6 +18,9 @@ import { useShellStore } from "@/store/shell";
 const route = useRoute();
 const router = useRouter();
 const shell = useShellStore();
+
+/** 滚动容器引用，用于判定是否接近底部。 */
+const navRef = ref<HTMLElement | null>(null);
 
 /** 当前高亮项：按 path 精确匹配，根路径单独处理避免被前缀匹配吞掉。 */
 /** 当前高亮项：按 path 前缀匹配；默认（含 / 和 /c/:id）高亮「对话」。 */
@@ -31,6 +37,38 @@ function go(path: string): void {
 function openConversation(id: number): void {
   router.push(`/chat/${id}`);
 }
+
+/** 滚动接近底部（32px 阈值）时请求加载下一页。幂等守卫在 store.requestLoadMore。 */
+function onScroll(e: Event): void {
+  const el = e.target as HTMLElement;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 32) {
+    shell.requestLoadMore();
+  }
+}
+
+/**
+ * 视口装不满时的兜底加载：当列表不产生滚动条（scrollHeight <= clientHeight）
+ * 但 hasMore 仍为真时，onScroll 永远不会触发。这里监听列表/加载态变化，
+ * 在 DOM 更新后检查——若装不下更多内容会一直自动续页，直到出现滚动条或到底。
+ */
+function maybeFillViewport(): void {
+  void nextTick(() => {
+    const el = navRef.value;
+    if (!el) return;
+    // 没有滚动条 + 还有更多 + 不在加载中 → 继续拉下一页填满视口。
+    if (el.scrollHeight <= el.clientHeight) {
+      shell.requestLoadMore();
+    }
+  });
+}
+
+// 列表或加载态变化时检查是否需要兜底加载。
+watch(
+  () => [shell.conversations.length, shell.loadingMore, shell.hasMore] as const,
+  () => {
+    if (shell.hasMore && shell.conversations.length) maybeFillViewport();
+  },
+);
 </script>
 
 <template>
@@ -46,7 +84,7 @@ function openConversation(id: number): void {
       <div class="brand-text">Nucle<span>Agent</span></div>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav" ref="navRef" @scroll="onScroll">
       <div class="nav-section-label">工作区</div>
       <div
         v-for="item in NAV_ITEMS"
@@ -57,11 +95,15 @@ function openConversation(id: number): void {
       >
         <svg v-if="item.key === 'chat'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
         <svg v-else-if="item.key === 'creation'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>
+        <svg v-else-if="item.key === 'tasks'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>
+        <!-- providers：滑块图标（配置语义） -->
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg>
         <span>{{ item.label }}</span>
       </div>
 
       <div class="nav-section-label">最近</div>
+      <!-- 历史列表不再自带滚动/限高：与导航项共用 .sidebar-nav 这一个滚动容器，
+           占满侧栏剩余高度。加载态/到底提示挂在列表末尾。 -->
       <div class="sidebar-history">
         <div
           v-for="c in shell.conversations"
@@ -78,6 +120,10 @@ function openConversation(id: number): void {
         <div v-if="!shell.conversations.length" class="history-empty">
           {{ shell.isAuthenticated ? "还没有对话" : "登录后查看历史" }}
         </div>
+        <!-- 加载更多态：正在拉下一页。 -->
+        <div v-else-if="shell.loadingMore" class="history-status">加载中…</div>
+        <!-- 到底提示：确认还有过对话且没有更多了。 -->
+        <div v-else-if="!shell.hasMore" class="history-status">没有更多了</div>
       </div>
     </nav>
 
@@ -265,9 +311,8 @@ function openConversation(id: number): void {
 
 .sidebar-history {
   padding: 0 12px;
-  flex-shrink: 0;
-  max-height: 240px;
-  overflow-y: auto;
+  /* 不再限高/独立滚动：让历史列表与导航项一起在 .sidebar-nav 单一滚动容器里
+     自然延展，占满侧栏剩余高度，消除原先的嵌套滚动与下方留白。 */
 }
 
 .history-item {
@@ -328,6 +373,14 @@ function openConversation(id: number): void {
 }
 
 .history-empty { padding: 7px 12px; font-size: 12.5px; color: var(--text-tertiary); }
+
+/* 加载更多 / 到底提示：与空态同体量，弱化颜色避免抢视觉。 */
+.history-status {
+  padding: 7px 12px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
 
 .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
 

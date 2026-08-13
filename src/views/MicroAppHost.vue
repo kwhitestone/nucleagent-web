@@ -17,8 +17,9 @@
  *
  * 消息协议（壳 → 子应用，type 前缀 'shell:'）：
  *   { source: 'shell', type: 'view', view, conversationId }  视图意图
+ *   { source: 'shell', type: 'loadMore' }  侧栏滚动到底，请求加载下一页
  * 消息协议（子应用 → 壳，type 前缀 'sub:'）：
- *   { source: 'sub', type: 'conversations', conversations, activeId }  对话列表
+ *   { source: 'sub', type: 'conversations', conversations, activeId, hasMore }  对话列表 + 是否还有更多
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -47,6 +48,7 @@ function buildIntent() {
   const view =
     path.startsWith("/creation") ? "creation"
     : path.startsWith("/tasks") ? "tasks"
+    : path.startsWith("/providers") ? "providers"
     : "chat"; // 默认（含 / 和 /chat）→ 对话
   const conversationId = path.startsWith("/chat/") ? path.split("/")[2] : null;
   return { source: "shell", type: "view" as const, view, conversationId };
@@ -85,6 +87,13 @@ watch(
   () => pushAuth(),
 );
 
+// 侧栏请求加载更多：计数自增即向 core 发 loadMore。
+// 用计数而非布尔，避免连续请求时同值不触发 watch。
+watch(
+  () => shell.loadMoreRequested,
+  () => postToSub({ source: "shell", type: "loadMore" }),
+);
+
 /** iframe 加载完成后立即下发视图意图 + 登录态。 */
 function onIframeLoad(): void {
   pushAuth();
@@ -102,12 +111,14 @@ function onMessage(e: MessageEvent): void {
     type?: string;
     conversations?: { id: number; title: string; status?: string }[];
     activeId?: number | null;
+    hasMore?: boolean;
   };
   if (d?.source !== "sub") return;
   if (d.type === "conversations" && Array.isArray(d.conversations)) {
     shell.setConversations(
       d.conversations.map((c) => ({ id: c.id, title: c.title, status: c.status })),
       d.activeId ?? null,
+      d.hasMore ?? true,
     );
   }
 }

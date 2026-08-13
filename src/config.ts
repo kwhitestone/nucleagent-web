@@ -53,6 +53,8 @@ export const NAV_ITEMS = [
   { key: "chat", label: "对话", path: "/chat" },
   { key: "creation", label: "创作", path: "/creation" },
   { key: "tasks", label: "任务", path: "/tasks" },
+  // 提供商配置（LLM provider + API key），同样落在 core 子应用里。
+  { key: "providers", label: "提供商", path: "/providers" },
 ] as const;
 
 export type NavKey = (typeof NAV_ITEMS)[number]["key"];
