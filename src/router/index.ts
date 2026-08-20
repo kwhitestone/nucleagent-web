@@ -40,9 +40,25 @@ router.beforeEach((to) => {
   const needsAuth = protectedPrefixes.some((p) => to.path.startsWith(p));
   if (needsAuth && !shell.isAuthenticated) {
     shell.openLoginModal();
-    return { name: "chat" };
+    // 只在不在 /chat 时重定向；已在 /chat 仍 return {name:'chat'} 会构成
+    // 「守卫每次都返回新 location」的死循环，router abort 后初始导航失败，
+    // 路由停在 matched:[] 的 "/"——登录成功也不渲染任何视图（iframe 不挂载、
+    // 侧栏无历史），刷新才恢复。
+    if (to.name !== "chat") return { name: "chat" };
   }
   return true;
+});
+
+/**
+ * 登录成功后恢复导航：守卫因未登录 abort 过的导航不会自动重试。
+ * token 从无到有（登录）时，若当前路由没有匹配的组件（matched 为空，
+ * 即初始导航被中止的残留状态），补一次 /chat 导航，让 MicroAppHost 挂载。
+ */
+router.afterEach(() => {
+  const shell = useShellStore();
+  if (shell.isAuthenticated && router.currentRoute.value.matched.length === 0) {
+    void router.push("/chat");
+  }
 });
 
 export default router;

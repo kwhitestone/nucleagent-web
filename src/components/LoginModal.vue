@@ -56,7 +56,10 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <transition name="modal">
+  <!-- duration 显式声明：登录成功常在入场动画进行中就关闭（leave 与 enter
+       叠加导致 transition 卡在 modal-enter-from，DOM 永远不移除、弹窗关不掉）。
+       固定 300ms 让 Vue 用定时器兜底移除节点，不依赖 CSS transition 事件。 -->
+  <transition name="modal" :duration="300">
     <div v-if="shell.loginModalOpen" class="modal-overlay" @click.self="close">
       <div class="modal anim-bounce">
         <div class="modal-header">
@@ -329,7 +332,8 @@ async function submit(): Promise<void> {
 
 /* transition: 弹窗淡入 + 轻微缩放 */
 .modal-enter-active,
-.modal-leave-active { transition: opacity 0.25s var(--ease); }
+/* leave 期间不拦截点击：关闭动画再卡也不挡住底下页面的交互。 */
+.modal-leave-active { transition: opacity 0.25s var(--ease); pointer-events: none; }
 .modal-enter-active .modal,
 .modal-leave-active .modal { transition: transform 0.3s var(--ease-spring), opacity 0.25s var(--ease); }
 .modal-enter-from,

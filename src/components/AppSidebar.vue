@@ -19,7 +19,7 @@ const route = useRoute();
 const router = useRouter();
 const shell = useShellStore();
 
-/** 滚动容器引用，用于判定是否接近底部。 */
+/** 滚动容器引用（历史列表自身），用于判定是否接近底部。 */
 const navRef = ref<HTMLElement | null>(null);
 
 /** 当前高亮项：按 path 精确匹配，根路径单独处理避免被前缀匹配吞掉。 */
@@ -48,15 +48,22 @@ function onScroll(e: Event): void {
 
 /**
  * 视口装不满时的兜底加载：当列表不产生滚动条（scrollHeight <= clientHeight）
- * 但 hasMore 仍为真时，onScroll 永远不会触发。这里监听列表/加载态变化，
- * 在 DOM 更新后检查——若装不下更多内容会一直自动续页，直到出现滚动条或到底。
+ * 但 hasMore 仍为真时，onScroll 永远不会触发——用户没有任何手段看到更多，
+ * 必须持续补页直到出现滚动条（无限滚动自续的前提）。总量设上限 200 条
+ * 防极端场景连环打满服务端；正常场景只需补 1-3 页就出滚动条，之后全部
+ * 由用户滚动触发。
  */
+const FILL_MAX_ITEMS = 200;
+
 function maybeFillViewport(): void {
   void nextTick(() => {
     const el = navRef.value;
     if (!el) return;
-    // 没有滚动条 + 还有更多 + 不在加载中 → 继续拉下一页填满视口。
-    if (el.scrollHeight <= el.clientHeight) {
+    // 没有滚动条 + 还有更多 + 不在加载中 + 未超上限 → 继续拉下一页。
+    if (
+      el.scrollHeight <= el.clientHeight &&
+      shell.conversations.length < FILL_MAX_ITEMS
+    ) {
       shell.requestLoadMore();
     }
   });
@@ -84,7 +91,7 @@ watch(
       <div class="brand-text">Nucle<span>Agent</span></div>
     </div>
 
-    <nav class="sidebar-nav" ref="navRef" @scroll="onScroll">
+    <nav class="sidebar-nav">
       <div class="nav-section-label">工作区</div>
       <div
         v-for="item in NAV_ITEMS"
@@ -101,10 +108,12 @@ watch(
         <span>{{ item.label }}</span>
       </div>
 
+      <!-- 历史列表是独立滚动容器：空间不足时只有它收缩/滚动，
+           工作区导航和条目本身的大小位置保持不变。滚动监听也挂在这里——
+           nav 是 overflow:hidden 永远不滚，scroll 事件又不冒泡，
+           挂在 nav 上无限滚动永远不会触发（之前只加载一页的根因）。 -->
       <div class="nav-section-label">最近</div>
-      <!-- 历史列表不再自带滚动/限高：与导航项共用 .sidebar-nav 这一个滚动容器，
-           占满侧栏剩余高度。加载态/到底提示挂在列表末尾。 -->
-      <div class="sidebar-history">
+      <div class="sidebar-history" ref="navRef" @scroll="onScroll">
         <div
           v-for="c in shell.conversations"
           :key="c.id"
@@ -165,6 +174,19 @@ watch(
 .sidebar--collapsed .sidebar-history,
 .sidebar--collapsed .user-info,
 .sidebar--collapsed .user-chip > svg { display: none; }
+
+/* 窄窗响应式：≤1024px 自动折叠为图标栏（64px），避免固定 264px 在小窗口
+   占掉约 1/3 屏宽。规则与 .sidebar--collapsed 折叠态一致，但不改 store
+   状态——宽屏下手动展开/折叠行为不受影响。 */
+@media (max-width: 1024px) {
+  .sidebar { width: var(--sidebar-collapsed-w); }
+  .brand-text,
+  .nav-section-label,
+  .nav-item span,
+  .sidebar-history,
+  .user-info,
+  .user-chip > svg { display: none; }
+}
 
 /* 右缘流动极光条 */
 .sidebar::after {
@@ -235,11 +257,14 @@ watch(
 
 .sidebar-nav {
   flex: 1;
-  overflow-y: auto;
+  /* 导航区不再整体滚动：高度不足时由 .sidebar-history 收缩滚动，
+     工作区导航固定可见，元素大小位置不变。 */
+  overflow: hidden;
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
 }
 
 .nav-section-label {
@@ -250,6 +275,9 @@ watch(
   color: var(--text-tertiary);
   padding: 12px 12px 6px;
 }
+
+/* 第二个区块标题（最近）：矮窗口下与上方导航项拉开距离。 */
+.sidebar-nav .nav-section-label:nth-of-type(2) { margin-top: 14px; }
 
 .nav-item {
   display: flex;
@@ -309,11 +337,27 @@ watch(
 
 .nav-item:hover svg { transform: scale(1.15); }
 
+/* 「最近」区块与上方导航拉开距离：窄高窗口下两个区块原本贴在一起显得拥挤。
+   间距规则见下方 .nav-section-label:nth-of-type(2)。 */
+
 .sidebar-history {
   padding: 0 12px;
-  /* 不再限高/独立滚动：让历史列表与导航项一起在 .sidebar-nav 单一滚动容器里
-     自然延展，占满侧栏剩余高度，消除原先的嵌套滚动与下方留白。 */
+  /* 行距：条目之间留 2px 呼吸感，矮窗口下不再一根根紧贴。 */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* 高度不足时收缩并自己滚动：工作区导航保持原位原尺寸，
+     只有历史区被压缩。0 以下 min-height 让 flex 收缩生效。 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
+
+/* 关键修复：flex 子项默认 flex-shrink:1，即使容器 overflow-y:auto，
+   条目仍会先被压扁而不出滚动条。禁掉 shrink——空间不够出滚动条，
+   条目大小位置不变。min-height 保住单行高度不被压缩。 */
+.sidebar-history > * { flex-shrink: 0; }
+.history-item { flex-shrink: 0; min-height: 34px; }
 
 .history-item {
   display: flex;
